@@ -71,18 +71,18 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     try:
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo-0125",  # ОБНОВЛЕНО: свежая версия
+            model="gpt-4.1-mini",  # ОБНОВЛЕНО: свежая версия
             messages=[
                 {
                     "role": "system", 
-                    "content": "Ты полезный ассистент в Telegram-группе. Отвечай кратко и понятно на русском. Сегодня 2024 год."
+                    "content": "Ты полезный ассистент в Telegram-группе. Отвечай кратко и понятно на русском. Сегодня 2025 год."
                 },
                 {
                     "role": "user", 
                     "content": clean_message
                 }
             ],
-            max_tokens=500
+            max_tokens=700
         )
         
         ai_response = response.choices[0].message.content
