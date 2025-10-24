@@ -73,20 +73,20 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.chat.send_action(action="typing")
     
     try:
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {
-                    "role": "system", 
-                    "content": "Ты полезный ассистент в Telegram-группе. Отвечай кратко и понятно на русском."
-                },
-                {
-                    "role": "user", 
-                    "content": clean_message
-                }
-            ],
-            max_tokens=500
-        )
+    response = client.chat.completions.create(
+        model="gpt-3.5-turbo-0125",  # Самая свежая версия GPT-3.5
+        messages=[
+            {
+                "role": "system", 
+                "content": "Ты полезный ассистент в Telegram-группе. Отвечай кратко и понятно на русском. Текущий год: 2024."
+            },
+            {
+                "role": "user", 
+                "content": clean_message
+            }
+        ],
+        max_tokens=500
+    )
         
         ai_response = response.choices[0].message.content
         
