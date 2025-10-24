@@ -34,7 +34,7 @@ if not OPENAI_API_KEY:
 client = OpenAI(api_key=OPENAI_API_KEY)
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Обрабатываем сообщения только с упоминанием бота"""
+    """Обрабатываем ответы на бота и упоминания через @"""
     
     if update.message.from_user.is_bot:
         return
@@ -43,20 +43,32 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_name = update.message.from_user.first_name
     bot_username = (await context.bot.get_me()).username
     
-    # Проверяем, есть ли упоминание бота в сообщении
-    if f"@{bot_username}" not in user_message and not user_message.startswith("/"):
-        print(f"❌ Игнорируем сообщение от {user_name} (без упоминания)")
+    # Проверяем, является ли сообщение ответом на сообщение бота
+    is_reply_to_bot = (
+        update.message.reply_to_message and 
+        update.message.reply_to_message.from_user and
+        update.message.reply_to_message.from_user.username == bot_username
+    )
+    
+    # Проверяем, есть ли упоминание бота через @
+    is_direct_mention = f"@{bot_username}" in user_message
+    is_command = user_message.startswith('/')
+    
+    # Отвечаем только если: ответ на бота ИЛИ прямое упоминание ИЛИ команда
+    should_respond = is_reply_to_bot or is_direct_mention or is_command
+    
+    if not should_respond:
+        print(f"❌ Игнорируем сообщение от {user_name} (не ответ боту и не упоминание)")
         return
     
-    print(f"💬 Получено сообщение от {user_name}: {user_message}")
+    print(f"💬 Обрабатываем сообщение от {user_name}: {user_message}")
     
-    # Убираем упоминание из сообщения
+    # Очищаем сообщение от упоминания
     clean_message = user_message.replace(f"@{bot_username}", "").strip()
     
-    # Если после очистки сообщение пустое, игнорируем
-    if not clean_message:
-        await update.message.reply_text("🤖 Да, я здесь! Чем могу помочь?")
-        return
+    # Если это команда (кроме /start), убираем команду
+    if clean_message.startswith('/') and not clean_message.startswith('/start'):
+        clean_message = ' '.join(clean_message.split(' ')[1:])
     
     await update.message.chat.send_action(action="typing")
     
@@ -77,16 +89,31 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         
         ai_response = response.choices[0].message.content
-        await update.message.reply_text(ai_response)
-        print(f"✅ Ответ отправлен пользователю {user_name}")
+        
+        # ВСЕГДА отвечаем reply на исходное сообщение пользователя
+        await update.message.reply_text(ai_response, reply_to_message_id=update.message.message_id)
+        print(f"✅ Ответ отправлен пользователю {user_name} (reply)")
         
     except Exception as e:
         print(f"❌ Ошибка: {e}")
-        await update.message.reply_text("😔 Произошла ошибка. Попробуйте еще раз.")
-        
-    except Exception as e:
-        print(f"❌ Ошибка при обращении к OpenAI: {e}")
-        await update.message.reply_text("😔 Произошла ошибка. Попробуйте еще раз.")
+        await update.message.reply_text("😔 Произошла ошибка. Попробуйте еще раз.", reply_to_message_id=update.message.message_id)
+
+async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Команда /start - показывает справку"""
+    bot_username = (await context.bot.get_me()).username
+    help_text = (
+        "🤖 *Помощь по боту:*\n\n"
+        "*Способы обращения:*\n"
+        "• Ответьте (reply) на любое мое сообщение\n"
+        "• Упоминание @{} в любом месте сообщения\n"
+        "• Команда /ask [вопрос]\n\n"
+        "*Примеры:*\n"
+        "`@{} Как дела?`\n"
+        "`/ask Напиши код`\n"
+        "Или просто ответьте на это сообщение!"
+    ).format(bot_username, bot_username)
+    
+    await update.message.reply_text(help_text, parse_mode='Markdown')
 
 async def post_init(application: Application):
     """Функция, которая выполняется после инициализации бота"""
