@@ -34,32 +34,43 @@ if not OPENAI_API_KEY:
 client = OpenAI(api_key=OPENAI_API_KEY)
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Обрабатываем сообщения от пользователей"""
+    """Обрабатываем сообщения только с упоминанием бота"""
     
-    # Игнорируем сообщения от ботов
     if update.message.from_user.is_bot:
         return
     
     user_message = update.message.text
     user_name = update.message.from_user.first_name
+    bot_username = (await context.bot.get_me()).username
+    
+    # Проверяем, есть ли упоминание бота в сообщении
+    if f"@{bot_username}" not in user_message and not user_message.startswith("/"):
+        print(f"❌ Игнорируем сообщение от {user_name} (без упоминания)")
+        return
     
     print(f"💬 Получено сообщение от {user_name}: {user_message}")
     
-    # Показываем "печатает..."
+    # Убираем упоминание из сообщения
+    clean_message = user_message.replace(f"@{bot_username}", "").strip()
+    
+    # Если после очистки сообщение пустое, игнорируем
+    if not clean_message:
+        await update.message.reply_text("🤖 Да, я здесь! Чем могу помочь?")
+        return
+    
     await update.message.chat.send_action(action="typing")
     
     try:
-        # Получаем ответ от ИИ
         response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
                 {
                     "role": "system", 
-                    "content": "Ты полезный ассистент в Telegram-группе. Отвечай кратко и понятно. Будь дружелюбным. Отвечай на русском языке."
+                    "content": "Ты полезный ассистент в Telegram-группе. Отвечай кратко и понятно на русском."
                 },
                 {
                     "role": "user", 
-                    "content": user_message
+                    "content": clean_message
                 }
             ],
             max_tokens=500
@@ -67,7 +78,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         ai_response = response.choices[0].message.content
         await update.message.reply_text(ai_response)
-        print(f"✅ Отправлен ответ пользователю {user_name}")
+        print(f"✅ Ответ отправлен пользователю {user_name}")
+        
+    except Exception as e:
+        print(f"❌ Ошибка: {e}")
+        await update.message.reply_text("😔 Произошла ошибка. Попробуйте еще раз.")
         
     except Exception as e:
         print(f"❌ Ошибка при обращении к OpenAI: {e}")
