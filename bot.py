@@ -54,45 +54,40 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     is_direct_mention = f"@{bot_username}" in user_message
     is_command = user_message.startswith('/')
     
-    # Отвечаем только если: ответ на бота ИЛИ прямое упоминание ИЛИ команда
     should_respond = is_reply_to_bot or is_direct_mention or is_command
     
     if not should_respond:
-        print(f"❌ Игнорируем сообщение от {user_name} (не ответ боту и не упоминание)")
+        print(f"❌ Игнорируем сообщение от {user_name}")
         return
     
     print(f"💬 Обрабатываем сообщение от {user_name}: {user_message}")
     
-    # Очищаем сообщение от упоминания
     clean_message = user_message.replace(f"@{bot_username}", "").strip()
     
-    # Если это команда (кроме /start), убираем команду
     if clean_message.startswith('/') and not clean_message.startswith('/start'):
         clean_message = ' '.join(clean_message.split(' ')[1:])
     
     await update.message.chat.send_action(action="typing")
     
     try:
-    response = client.chat.completions.create(
-        model="gpt-3.5-turbo-0125",  # Самая свежая версия GPT-3.5
-        messages=[
-            {
-                "role": "system", 
-                "content": "Ты полезный ассистент в Telegram-группе. Отвечай кратко и понятно на русском. Текущий год: 2024."
-            },
-            {
-                "role": "user", 
-                "content": clean_message
-            }
-        ],
-        max_tokens=500
-    )
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo-0125",  # ОБНОВЛЕНО: свежая версия
+            messages=[
+                {
+                    "role": "system", 
+                    "content": "Ты полезный ассистент в Telegram-группе. Отвечай кратко и понятно на русском. Сегодня 2024 год."
+                },
+                {
+                    "role": "user", 
+                    "content": clean_message
+                }
+            ],
+            max_tokens=500
+        )
         
         ai_response = response.choices[0].message.content
-        
-        # ВСЕГДА отвечаем reply на исходное сообщение пользователя
         await update.message.reply_text(ai_response, reply_to_message_id=update.message.message_id)
-        print(f"✅ Ответ отправлен пользователю {user_name} (reply)")
+        print(f"✅ Ответ отправлен пользователю {user_name}")
         
     except Exception as e:
         print(f"❌ Ошибка: {e}")
